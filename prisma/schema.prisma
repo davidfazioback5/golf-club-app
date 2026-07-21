@@ -1,0 +1,99 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Member {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  handicap  Float?
+  bio       String?
+  createdAt DateTime @default(now())
+
+  rounds            Round[]
+  createdTeeTimes   TeeTime[]        @relation("TeeTimeCreator")
+  teeTimeSignups    TeeTimePlayer[]
+  createdEvents     Event[]          @relation("EventCreator")
+  eventRegistrations EventRegistration[]
+  eventResults      EventResult[]
+}
+
+model Round {
+  id          String   @id @default(cuid())
+  memberId    String
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  courseName  String
+  datePlayed  DateTime
+  score       Int
+  notes       String?
+  createdAt   DateTime @default(now())
+}
+
+model TeeTime {
+  id          String   @id @default(cuid())
+  courseName  String
+  date        DateTime
+  maxPlayers  Int      @default(4)
+  createdById String
+  createdBy   Member   @relation("TeeTimeCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  players TeeTimePlayer[]
+}
+
+model TeeTimePlayer {
+  id        String   @id @default(cuid())
+  teeTimeId String
+  teeTime   TeeTime  @relation(fields: [teeTimeId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([teeTimeId, memberId])
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  date        DateTime
+  location    String?
+  createdById String
+  createdBy   Member   @relation("EventCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  registrations EventRegistration[]
+  results       EventResult[]
+}
+
+model EventRegistration {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, memberId])
+}
+
+model EventResult {
+  id       String @id @default(cuid())
+  eventId  String
+  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  score    Int
+
+  @@unique([eventId, memberId])
+}
