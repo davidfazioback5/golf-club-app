@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 
 const SESSION_COOKIE = "member_id";
@@ -29,5 +29,11 @@ export async function clearCurrentMember() {
 export async function requireMember() {
   const member = await getCurrentMember();
   if (!member) redirect("/signin");
+  return member;
+}
+
+export async function requireAdmin() {
+  const member = await getCurrentMember();
+  if (!member?.isAdmin) notFound();
   return member;
 }
