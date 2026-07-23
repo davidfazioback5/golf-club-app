@@ -1,21 +1,42 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { getCurrentMember } from "@/lib/session";
-import { logRound } from "./actions";
+import { LogRoundForm } from "./log-round-form";
 
-export default async function ScoresPage() {
-  const [grouped, recentRounds, currentMember] = await Promise.all([
+export default async function ScoresPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ course?: string }>;
+}) {
+  const { course: selectedCourseId } = await searchParams;
+
+  const [courses, currentMember] = await Promise.all([
+    db.course.findMany({
+      orderBy: { name: "asc" },
+      include: { holes: { orderBy: { number: "asc" } } },
+    }),
+    getCurrentMember(),
+  ]);
+
+  const selectedCourse = selectedCourseId
+    ? courses.find((c) => c.id === selectedCourseId)
+    : undefined;
+  const whereClause = selectedCourse ? { courseId: selectedCourse.id } : {};
+
+  const [grouped, recentRounds] = await Promise.all([
     db.round.groupBy({
       by: ["memberId"],
+      where: whereClause,
       _min: { score: true },
       _avg: { score: true },
       _count: { _all: true },
     }),
     db.round.findMany({
+      where: whereClause,
       orderBy: { datePlayed: "desc" },
       take: 15,
-      include: { member: true },
+      include: { member: true, course: true },
     }),
-    getCurrentMember(),
   ]);
 
   const memberIds = grouped.map((g) => g.memberId);
@@ -45,7 +66,35 @@ export default async function ScoresPage() {
 
       <div className="grid gap-8 md:grid-cols-2">
         <div>
-          <h2 className="mb-3 text-lg font-semibold">Leaderboard</h2>
+          <div className="mb-3 flex flex-wrap gap-2 text-sm">
+            <Link
+              href="/scores"
+              className={`rounded-full px-3 py-1 font-medium ${
+                !selectedCourse
+                  ? "bg-black text-white dark:bg-white dark:text-black"
+                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+              }`}
+            >
+              Overall
+            </Link>
+            {courses.map((c) => (
+              <Link
+                key={c.id}
+                href={`/scores?course=${c.id}`}
+                className={`rounded-full px-3 py-1 font-medium ${
+                  selectedCourse?.id === c.id
+                    ? "bg-black text-white dark:bg-white dark:text-black"
+                    : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                }`}
+              >
+                {c.name}
+              </Link>
+            ))}
+          </div>
+
+          <h2 className="mb-3 text-lg font-semibold">
+            {selectedCourse ? `${selectedCourse.name} leaderboard` : "Overall leaderboard"}
+          </h2>
           {leaderboard.length === 0 ? (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               No rounds logged yet.
@@ -95,7 +144,7 @@ export default async function ScoresPage() {
                   className="flex items-center justify-between rounded-md border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-zinc-900"
                 >
                   <span>
-                    <strong>{round.member.name}</strong> — {round.courseName}
+                    <strong>{round.member.name}</strong> — {round.course.name}
                   </span>
                   <span className="flex items-center gap-3 text-zinc-500">
                     {round.datePlayed.toLocaleDateString()}
@@ -112,63 +161,13 @@ export default async function ScoresPage() {
         <div>
           <h2 className="mb-3 text-lg font-semibold">Log a round</h2>
           {currentMember ? (
-            <form
-              action={logRound}
-              className="space-y-3 rounded-lg border border-black/10 bg-white p-4 dark:border-white/15 dark:bg-zinc-900"
-            >
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Course
-                </label>
-                <input
-                  name="courseName"
-                  required
-                  className="w-full rounded-md border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/15"
-                  placeholder="Fairway Social Club"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Date played
-                  </label>
-                  <input
-                    name="datePlayed"
-                    type="date"
-                    required
-                    className="w-full rounded-md border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/15"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Score
-                  </label>
-                  <input
-                    name="score"
-                    type="number"
-                    required
-                    className="w-full rounded-md border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/15"
-                    placeholder="82"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Notes (optional)
-                </label>
-                <input
-                  name="notes"
-                  className="w-full rounded-md border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/15"
-                  placeholder="Windy day, played the back nine twice"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full rounded-md bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-              >
-                Save round
-              </button>
-            </form>
+            <LogRoundForm
+              courses={courses.map((c) => ({
+                id: c.id,
+                name: c.name,
+                holes: c.holes.map((h) => ({ number: h.number, par: h.par })),
+              }))}
+            />
           ) : (
             <p className="rounded-lg border border-black/10 bg-white p-4 text-sm dark:border-white/15 dark:bg-zinc-900">
               <a href="/signin" className="font-medium underline">

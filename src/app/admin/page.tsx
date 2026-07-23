@@ -1,14 +1,20 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { setMemberAdmin, removeMember, removeEvent, removeTeeTime } from "./actions";
+import { removeCourse } from "./courses/actions";
 
 export default async function AdminPage() {
   const currentAdmin = await requireAdmin();
 
-  const [members, events, teeTimes] = await Promise.all([
+  const [members, events, teeTimes, courses] = await Promise.all([
     db.member.findMany({ orderBy: { name: "asc" } }),
     db.event.findMany({ orderBy: { date: "desc" } }),
     db.teeTime.findMany({ orderBy: { date: "desc" }, include: { players: true } }),
+    db.course.findMany({
+      orderBy: { name: "asc" },
+      include: { _count: { select: { rounds: true } } },
+    }),
   ]);
 
   return (
@@ -75,6 +81,49 @@ export default async function AdminPage() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Courses</h2>
+          <Link
+            href="/admin/courses/new"
+            className="rounded-md bg-black px-3 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-black"
+          >
+            Add course
+          </Link>
+        </div>
+        {courses.length === 0 ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">No courses yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {courses.map((course) => (
+              <li
+                key={course.id}
+                className="flex items-center justify-between rounded-lg border border-black/10 bg-white p-3 text-sm dark:border-white/15 dark:bg-zinc-900"
+              >
+                <span>
+                  {course.name}{" "}
+                  <span className="text-zinc-500">
+                    ({course._count.rounds} round
+                    {course._count.rounds === 1 ? "" : "s"} logged)
+                  </span>
+                </span>
+                {course._count.rounds === 0 && (
+                  <form action={removeCourse}>
+                    <input type="hidden" name="courseId" value={course.id} />
+                    <button
+                      type="submit"
+                      className="text-sm font-medium text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section>

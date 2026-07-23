@@ -7,20 +7,35 @@ import { requireMember } from "@/lib/session";
 export async function logRound(formData: FormData) {
   const member = await requireMember();
 
-  const courseName = String(formData.get("courseName") ?? "").trim();
+  const courseId = String(formData.get("courseId") ?? "");
   const datePlayed = String(formData.get("datePlayed") ?? "");
-  const score = Number(formData.get("score"));
   const notes = String(formData.get("notes") ?? "").trim();
 
-  if (!courseName || !datePlayed || !Number.isFinite(score)) return;
+  if (!courseId || !datePlayed) return;
+
+  const course = await db.course.findUnique({
+    where: { id: courseId },
+    include: { holes: true },
+  });
+  if (!course) return;
+
+  const holeScores: { holeNumber: number; strokes: number }[] = [];
+  for (const hole of course.holes) {
+    const strokes = Number(formData.get(`strokes-${hole.number}`));
+    if (!Number.isFinite(strokes) || strokes <= 0) return;
+    holeScores.push({ holeNumber: hole.number, strokes });
+  }
+
+  const total = holeScores.reduce((sum, h) => sum + h.strokes, 0);
 
   await db.round.create({
     data: {
       memberId: member.id,
-      courseName,
+      courseId,
       datePlayed: new Date(datePlayed),
-      score,
+      score: total,
       notes: notes || null,
+      holeScores: { create: holeScores },
     },
   });
 

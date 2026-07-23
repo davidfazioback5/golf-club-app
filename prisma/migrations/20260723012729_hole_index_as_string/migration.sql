@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Hole" ALTER COLUMN "menIndex" SET DATA TYPE TEXT,
+ALTER COLUMN "ladiesIndex" SET DATA TYPE TEXT;

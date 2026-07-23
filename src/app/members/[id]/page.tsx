@@ -11,7 +11,11 @@ export default async function MemberProfilePage({
   const member = await db.member.findUnique({
     where: { id },
     include: {
-      rounds: { orderBy: { datePlayed: "desc" }, take: 10 },
+      rounds: {
+        orderBy: { datePlayed: "desc" },
+        take: 10,
+        include: { course: true },
+      },
     },
   });
 
@@ -64,7 +68,7 @@ export default async function MemberProfilePage({
                     <td className="px-4 py-2">
                       {round.datePlayed.toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-2">{round.courseName}</td>
+                    <td className="px-4 py-2">{round.course.name}</td>
                     <td className="px-4 py-2 font-semibold">{round.score}</td>
                   </tr>
                 ))}

@@ -29,15 +29,51 @@ model Member {
   eventResults      EventResult[]
 }
 
+model Course {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  holes  Hole[]
+  rounds Round[]
+}
+
+model Hole {
+  id           String @id @default(cuid())
+  courseId     String
+  course       Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  number       Int
+  par          Int
+  menIndex     String?
+  menMetres    Int?
+  ladiesIndex  String?
+  ladiesMetres Int?
+
+  @@unique([courseId, number])
+}
+
 model Round {
   id          String   @id @default(cuid())
   memberId    String
   member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  courseName  String
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id])
   datePlayed  DateTime
   score       Int
   notes       String?
   createdAt   DateTime @default(now())
+
+  holeScores HoleScore[]
+}
+
+model HoleScore {
+  id         String @id @default(cuid())
+  roundId    String
+  round      Round  @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  holeNumber Int
+  strokes    Int
+
+  @@unique([roundId, holeNumber])
 }
 
 model TeeTime {
