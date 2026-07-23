@@ -18,6 +18,7 @@ model Member {
   email     String   @unique
   handicap  Float?
   bio       String?
+  isAdmin   Boolean  @default(false)
   createdAt DateTime @default(now())
 
   rounds            Round[]

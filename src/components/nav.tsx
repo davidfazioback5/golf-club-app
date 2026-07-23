@@ -29,12 +29,22 @@ export async function Nav() {
             </Link>
           ))}
           {member ? (
-            <Link
-              href="/signin"
-              className="rounded-full bg-zinc-100 px-3 py-1.5 dark:bg-zinc-800"
-            >
-              {member.name}
-            </Link>
+            <>
+              {member.isAdmin && (
+                <Link
+                  href="/admin"
+                  className="text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                >
+                  Admin
+                </Link>
+              )}
+              <Link
+                href="/signin"
+                className="rounded-full bg-zinc-100 px-3 py-1.5 dark:bg-zinc-800"
+              >
+                {member.name}
+              </Link>
+            </>
           ) : (
             <Link
               href="/signin"
