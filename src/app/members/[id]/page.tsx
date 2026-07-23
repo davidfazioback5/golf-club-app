@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { ExpandableRound } from "@/components/expandable-round";
 
 export default async function MemberProfilePage({
   params,
@@ -14,7 +15,7 @@ export default async function MemberProfilePage({
       rounds: {
         orderBy: { datePlayed: "desc" },
         take: 10,
-        include: { course: true },
+        include: { course: { include: { holes: true } }, holeScores: true },
       },
     },
   });
@@ -50,30 +51,37 @@ export default async function MemberProfilePage({
             No rounds logged yet.
           </p>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-black/10 dark:border-white/15">
-            <table className="w-full text-sm">
-              <thead className="bg-zinc-100 text-left dark:bg-zinc-800">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Date</th>
-                  <th className="px-4 py-2 font-medium">Course</th>
-                  <th className="px-4 py-2 font-medium">Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {member.rounds.map((round) => (
-                  <tr
-                    key={round.id}
-                    className="border-t border-black/10 bg-white dark:border-white/15 dark:bg-zinc-900"
-                  >
-                    <td className="px-4 py-2">
-                      {round.datePlayed.toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-2">{round.course.name}</td>
-                    <td className="px-4 py-2 font-semibold">{round.score}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-2 text-sm">
+            {member.rounds.map((round) => {
+              const holes = round.course.holes
+                .slice()
+                .sort((a, b) => a.number - b.number)
+                .map((h) => ({
+                  number: h.number,
+                  par: h.par,
+                  strokes:
+                    round.holeScores.find((hs) => hs.holeNumber === h.number)
+                      ?.strokes ?? 0,
+                }));
+
+              return (
+                <ExpandableRound
+                  key={round.id}
+                  holes={holes}
+                  summary={
+                    <span className="flex flex-1 items-center justify-between">
+                      <span>{round.course.name}</span>
+                      <span className="flex items-center gap-3 text-zinc-500">
+                        {round.datePlayed.toLocaleDateString()}
+                        <span className="font-semibold text-black dark:text-white">
+                          {round.score}
+                        </span>
+                      </span>
+                    </span>
+                  }
+                />
+              );
+            })}
           </div>
         )}
       </div>
